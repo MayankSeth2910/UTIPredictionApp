@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>UTI Diagnostic Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0a1628;
+  --navy-mid:#112244;
+  --teal:#00c9b1;
+  --teal-dim:#009e8c;
+  --cream:#f5f0e8;
+  --red:#e84545;
+  --green:#22c55e;
+  --text:#e8eaf0;
+  --muted:#7a8aaa;
+  --border:rgba(0,201,177,0.18);
+  --card:rgba(17,34,68,0.8);
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--navy);
+  color:var(--text);
+  min-height:100vh;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 10% 10%, rgba(0,201,177,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 90% 80%, rgba(0,100,200,0.08) 0%, transparent 60%);
+}
+
+/* ── Header ── */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.5rem 2.5rem;
+  border-bottom:1px solid var(--border);
+  backdrop-filter:blur(10px);
+  position:sticky;top:0;z-index:100;
+  background:rgba(10,22,40,0.85);
+}
+.logo{display:flex;align-items:center;gap:.75rem}
+.logo-icon{
+  width:38px;height:38px;
+  background:linear-gradient(135deg,var(--teal),#0066cc);
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;
+}
+.logo-text{font-family:'DM Serif Display',serif;font-size:1.25rem;letter-spacing:.5px}
+.logo-sub{font-size:.7rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:.1rem}
+.badge{
+  background:rgba(0,201,177,0.12);border:1px solid var(--border);
+  color:var(--teal);font-size:.7rem;padding:.3rem .8rem;border-radius:20px;
+  letter-spacing:1px;text-transform:uppercase;
+}
+
+/* ── Hero ── */
+.hero{
+  text-align:center;
+  padding:4rem 2rem 2rem;
+}
+.hero h1{
+  font-family:'DM Serif Display',serif;
+  font-size:clamp(2rem,5vw,3.5rem);
+  line-height:1.1;
+  color:var(--cream);
+}
+.hero h1 em{font-style:italic;color:var(--teal)}
+.hero p{
+  margin:.8rem auto 0;
+  max-width:500px;
+  color:var(--muted);
+  font-size:.95rem;
+  line-height:1.7;
+}
+
+/* ── Main layout ── */
+main{max-width:900px;margin:0 auto;padding:2rem}
+
+/* ── Card ── */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:2rem;
+  backdrop-filter:blur(10px);
+  margin-bottom:1.5rem;
+}
+.card-title{
+  font-family:'DM Serif Display',serif;
+  font-size:1.1rem;
+  color:var(--teal);
+  margin-bottom:1.5rem;
+  display:flex;align-items:center;gap:.5rem;
+}
+.card-title::before{
+  content:'';
+  display:block;width:4px;height:18px;
+  background:var(--teal);border-radius:2px;
+}
+
+/* ── Grid ── */
+.grid{display:grid;gap:1.2rem}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:640px){.g2,.g3{grid-template-columns:1fr}}
+
+/* ── Fields ── */
+.field{display:flex;flex-direction:column;gap:.4rem}
+label{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:500}
+input,select{
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px;
+  color:var(--text);
+  padding:.65rem .9rem;
+  font-family:'DM Sans',sans-serif;
+  font-size:.9rem;
+  transition:border-color .2s,box-shadow .2s;
+  width:100%;
+}
+input:focus,select:focus{
+  outline:none;
+  border-color:var(--teal);
+  box-shadow:0 0 0 3px rgba(0,201,177,0.1);
+}
+select option{background:#1a2a4a}
+input::placeholder{color:#4a5a7a}
+
+/* ── Submit ── */
+.submit-wrap{text-align:center;margin-top:1rem}
+button.predict-btn{
+  background:linear-gradient(135deg,var(--teal),#0088cc);
+  color:#fff;border:none;
+  padding:1rem 3rem;
+  border-radius:50px;
+  font-family:'DM Sans',sans-serif;
+  font-size:1rem;font-weight:600;
+  cursor:pointer;
+  letter-spacing:.5px;
+  transition:opacity .2s,transform .15s;
+  position:relative;overflow:hidden;
+}
+button.predict-btn:hover{opacity:.9;transform:translateY(-1px)}
+button.predict-btn:active{transform:translateY(0)}
+button.predict-btn:disabled{opacity:.5;cursor:not-allowed}
+.spinner{
+  display:none;
+  width:18px;height:18px;
+  border:2px solid rgba(255,255,255,0.3);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+  margin:0 auto;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Result Panel ── */
+#result-panel{
+  display:none;
+  animation:fadeUp .4s ease;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+
+.result-box{
+  border-radius:12px;
+  padding:2rem;
+  text-align:center;
+  border:2px solid;
+  margin-bottom:1.5rem;
+}
+.result-box.positive{
+  border-color:var(--red);
+  background:rgba(232,69,69,0.07);
+}
+.result-box.negative{
+  border-color:var(--green);
+  background:rgba(34,197,94,0.07);
+}
+.result-label{
+  font-size:.7rem;text-transform:uppercase;letter-spacing:2px;
+  color:var(--muted);margin-bottom:.5rem;
+}
+.result-value{
+  font-family:'DM Serif Display',serif;
+  font-size:2.8rem;
+  font-weight:400;
+}
+.result-box.positive .result-value{color:var(--red)}
+.result-box.negative .result-value{color:var(--green)}
+.confidence-bar-wrap{margin-top:1rem}
+.confidence-text{font-size:.8rem;color:var(--muted);margin-bottom:.4rem}
+.confidence-bar{
+  height:6px;background:rgba(255,255,255,0.08);
+  border-radius:3px;overflow:hidden;
+}
+.confidence-fill{
+  height:100%;border-radius:3px;
+  transition:width 1s ease;
+  background:var(--teal);
+}
+
+/* ── Feedback ── */
+.feedback-section{
+  text-align:center;
+}
+.feedback-q{
+  font-size:.9rem;color:var(--muted);margin-bottom:1rem;
+}
+.feedback-q strong{color:var(--text)}
+.feedback-btns{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}
+.fb-btn{
+  padding:.6rem 1.8rem;border-radius:50px;
+  font-family:'DM Sans',sans-serif;font-size:.875rem;font-weight:600;
+  cursor:pointer;border:2px solid;transition:all .2s;
+}
+.fb-btn.yes{border-color:var(--green);color:var(--green);background:transparent}
+.fb-btn.yes:hover{background:var(--green);color:#fff}
+.fb-btn.no{border-color:var(--red);color:var(--red);background:transparent}
+.fb-btn.no:hover{background:var(--red);color:#fff}
+.fb-btn.skip{border-color:#4a5a7a;color:#4a5a7a;background:transparent}
+.fb-btn.skip:hover{border-color:var(--muted);color:var(--muted)}
+.fb-btn:disabled{opacity:.4;cursor:not-allowed}
+.feedback-done{font-size:.9rem;color:var(--teal);margin-top:.5rem;display:none}
+
+/* ── Toast ── */
+#toast{
+  position:fixed;bottom:2rem;right:2rem;
+  background:#1e3050;border:1px solid var(--border);
+  color:var(--text);border-radius:10px;
+  padding:.8rem 1.4rem;font-size:.85rem;
+  opacity:0;transform:translateY(10px);
+  transition:all .3s;pointer-events:none;z-index:999;
+}
+#toast.show{opacity:1;transform:none}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🔬</div>
+    <div>
+      <div class="logo-text">UTI Diagnostics</div>
+      <div class="logo-sub">AI-Powered Urinalysis</div>
+    </div>
+  </div>
+  <div class="badge">Ensemble Model</div>
+</header>
+
+<section class="hero">
+  <h1>Urinalysis Report<br><em>Prediction System</em></h1>
+  <p>Enter urinalysis values below. Our ensemble of trained ML models will predict UTI diagnosis.</p>
+</section>
+
+<main>
+
+  <!-- Patient Info -->
+  <div class="card">
+    <div class="card-title">Patient Information</div>
+    <div class="grid g3">
+      <div class="field">
+        <label>Age</label>
+        <input type="number" id="Age" placeholder="e.g. 34" min="1" max="120"/>
+      </div>
+      <div class="field">
+        <label>Gender</label>
+        <select id="Gender">
+          <option value="">Select</option>
+          <option value="FEMALE">Female</option>
+          <option value="MALE">Male</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Urine Color</label>
+        <select id="Color">
+          <option value="">Select</option>
+          <option>YELLOW</option>
+          <option>REDDISH YELLOW</option>
+          <option>DARK YELLOW</option>
+          <option>AMBER</option>
+          <option>LIGHT YELLOW</option>
+          <option>STRAW</option>
+          <option>BROWN</option>
+          <option>RED</option>
+          <option>REDDISH</option>
+          <option>LIGHT RED</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Physical Properties -->
+  <div class="card">
+    <div class="card-title">Physical Properties</div>
+    <div class="grid g2">
+      <div class="field">
+        <label>Transparency</label>
+        <select id="Transparency">
+          <option value="">Select</option>
+          <option>CLEAR</option>
+          <option>SLIGHTLY HAZY</option>
+          <option>HAZY</option>
+          <option>TURBID</option>
+          <option>CLOUDY</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>pH</label>
+        <input type="number" id="pH" placeholder="e.g. 6.5" step="0.1" min="4" max="9"/>
+      </div>
+      <div class="field">
+        <label>Specific Gravity</label>
+        <input type="number" id="Specific Gravity" placeholder="e.g. 1.015" step="0.001" min="1.001" max="1.035"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chemical Properties -->
+  <div class="card">
+    <div class="card-title">Chemical Properties</div>
+    <div class="grid g2">
+      <div class="field">
+        <label>Glucose</label>
+        <select id="Glucose">
+          <option value="">Select</option>
+          <option>NEGATIVE</option><option>TRACE</option>
+          <option>1+</option><option>2+</option><option>3+</option><option>4+</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Protein</label>
+        <select id="Protein">
+          <option value="">Select</option>
+          <option>NEGATIVE</option><option>TRACE</option>
+          <option>1+</option><option>2+</option><option>3+</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Microscopic Examination -->
+  <div class="card">
+    <div class="card-title">Microscopic Examination</div>
+    <div class="grid g2">
+      <div class="field">
+        <label>WBC (per HPF)</label>
+        <input type="number" id="WBC" placeholder="e.g. 5" min="0"/>
+      </div>
+      <div class="field">
+        <label>RBC (per HPF)</label>
+        <input type="number" id="RBC" placeholder="e.g. 2" min="0"/>
+      </div>
+      <div class="field">
+        <label>Epithelial Cells</label>
+        <select id="Epithelial Cells">
+          <option value="">Select</option>
+          <option>NONE SEEN</option><option>RARE</option><option>OCCASIONAL</option>
+          <option>FEW</option><option>MODERATE</option><option>PLENTY</option><option>LOADED</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Bacteria</label>
+        <select id="Bacteria">
+          <option value="">Select</option>
+          <option>NONE SEEN</option><option>RARE</option><option>OCCASIONAL</option>
+          <option>FEW</option><option>MODERATE</option><option>PLENTY</option><option>LOADED</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Mucous Threads</label>
+        <select id="Mucous Threads">
+          <option value="">Select</option>
+          <option>NONE SEEN</option><option>RARE</option><option>OCCASIONAL</option>
+          <option>FEW</option><option>MODERATE</option><option>PLENTY</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Amorphous Urates</label>
+        <select id="Amorphous Urates">
+          <option value="">Select</option>
+          <option>NONE SEEN</option><option>RARE</option><option>OCCASIONAL</option>
+          <option>FEW</option><option>MODERATE</option><option>PLENTY</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="submit-wrap">
+    <button class="predict-btn" onclick="submitPrediction()">
+      <span id="btn-text">Run Diagnostic</span>
+      <div class="spinner" id="spinner"></div>
+    </button>
+  </div>
+
+  <!-- Result Panel -->
+  <div id="result-panel">
+    <div class="card" style="margin-top:1.5rem">
+      <div class="card-title">Diagnostic Result</div>
+      <div id="result-box" class="result-box">
+        <div class="result-label">UTI Diagnosis</div>
+        <div class="result-value" id="result-value">—</div>
+        <div class="confidence-bar-wrap">
+          <div class="confidence-text" id="conf-text"></div>
+          <div class="confidence-bar">
+            <div class="confidence-fill" id="conf-fill" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="feedback-section">
+        <div class="feedback-q">
+          <strong>Is this diagnosis correct?</strong><br/>
+          Your feedback helps improve our model.
+        </div>
+        <div class="feedback-btns">
+          <button class="fb-btn yes" onclick="sendFeedback('Yes')">✓ Yes, Correct</button>
+          <button class="fb-btn no" onclick="sendFeedback('No')">✗ No, Incorrect</button>
+          <button class="fb-btn skip" onclick="sendFeedback(null)">Skip</button>
+        </div>
+        <div class="feedback-done" id="feedback-done">✓ Thank you for your feedback!</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+const FIELDS = ['Age','Gender','Color','Transparency','pH','Specific Gravity',
+                'WBC','RBC','Glucose','Protein','Epithelial Cells','Bacteria',
+                'Mucous Threads','Amorphous Urates'];
+let currentId = null;
+
+function getVal(id){return document.getElementById(id)?.value?.trim()}
+
+function toast(msg,ms=3000){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),ms);
+}
+
+function validate(){
+  for(const f of FIELDS){
+    if(!getVal(f)){toast(`Please fill in: ${f}`);return false;}
+  }
+  return true;
+}
+
+async function submitPrediction(){
+  if(!validate())return;
+  const btn=document.querySelector('.predict-btn');
+  document.getElementById('btn-text').style.display='none';
+  document.getElementById('spinner').style.display='block';
+  btn.disabled=true;
+
+  const payload={};
+  FIELDS.forEach(f=>payload[f]=getVal(f));
+
+  try{
+    const res=await fetch('/predict',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    const data=await res.json();
+    if(data.error){toast('Error: '+data.error);return;}
+    showResult(data);
+  }catch(e){
+    toast('Connection error. Is the server running?');
+  }finally{
+    document.getElementById('btn-text').style.display='block';
+    document.getElementById('spinner').style.display='none';
+    btn.disabled=false;
+  }
+}
+
+function showResult(data){
+  currentId=data.id;
+  const panel=document.getElementById('result-panel');
+  const box=document.getElementById('result-box');
+  const val=document.getElementById('result-value');
+  const confText=document.getElementById('conf-text');
+  const confFill=document.getElementById('conf-fill');
+  const fbDone=document.getElementById('feedback-done');
+
+  const isPos=data.prediction==='POSITIVE';
+  box.className='result-box '+(isPos?'positive':'negative');
+  val.textContent=isPos?'POSITIVE':'NEGATIVE';
+
+  const pct=data.confidence?Math.round(data.confidence*100):null;
+  confText.textContent=pct?`Confidence: ${pct}%`:'';
+  confFill.style.background=isPos?'#e84545':'#22c55e';
+  setTimeout(()=>confFill.style.width=(pct||80)+'%',100);
+
+  // Reset feedback
+  document.querySelectorAll('.fb-btn').forEach(b=>b.disabled=false);
+  fbDone.style.display='none';
+
+  panel.style.display='block';
+  panel.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+async function sendFeedback(val){
+  document.querySelectorAll('.fb-btn').forEach(b=>b.disabled=true);
+  if(val===null){
+    document.getElementById('feedback-done').textContent='Response saved without feedback.';
+    document.getElementById('feedback-done').style.display='block';
+    return;
+  }
+  try{
+    await fetch('/feedback',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id:currentId,feedback:val})
+    });
+  }catch(e){}
+  document.getElementById('feedback-done').textContent='✓ Thank you for your feedback!';
+  document.getElementById('feedback-done').style.display='block';
+}
+</script>
+</body>
+</html>
