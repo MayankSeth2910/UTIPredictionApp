@@ -4,11 +4,11 @@ import pickle
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-import openpyxl
-from openpyxl import load_workbook
 import os
 from datetime import datetime
 import json
+import gspread
+from google.oauth2.service_account import Credentials
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -16,7 +16,6 @@ CORS(app)
 # ─── Load Models ──────────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(BASE_DIR, 'models')
-DATA_FILE = os.path.join(BASE_DIR, 'predictions_log.xlsx')
 
 rf_model = None
 lgbm_untuned = None
@@ -45,20 +44,32 @@ EXCEL_HEADERS = [
     'Epithelial Cells', 'Mucous Threads', 'Amorphous Urates', 'Bacteria',
     'Prediction', 'Confidence', 'Feedback'
 ]
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets',
+          'https://www.googleapis.com/auth/drive']
 
-def init_excel():
-    if not os.path.exists(DATA_FILE):
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Predictions"
-        ws.append(EXCEL_HEADERS)
-        wb.save(DATA_FILE)
 
-def save_to_excel(row_data: dict, feedback=None):
+SHEET_ID = '15Idlo6QL65HdZaACih1FWJkJ6fXCs344tONgfEHnsLw'
+gc = None
+worksheet = None
+
+def init_sheets():
+    global gc, worksheet
     try:
-        wb = load_workbook(DATA_FILE)
-        ws = wb['Predictions']
-        row_id = ws.max_row  # auto ID
+        creds_json = json.loads(os.environ.get('GOOGLE_CREDENTIALS'))
+        creds = Credentials.from_service_account_info(creds_json, scopes=SCOPES)
+        gc = gspread.authorize(creds)
+        sh = gc.open_by_key(SHEET_ID)
+        worksheet = sh.sheet1
+        # Add headers if empty
+        if worksheet.row_count == 0 or worksheet.acell('A1').value is None:
+            worksheet.append_row(EXCEL_HEADERS)
+        print("✅ Google Sheets connected.")
+    except Exception as e:
+        print(f"⚠️ Sheets error: {e}")
+
+def save_to_sheets(row_data: dict, feedback=None):
+    try:
+        row_id = len(worksheet.get_all_values())
         row = [
             row_id,
             datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -80,11 +91,10 @@ def save_to_excel(row_data: dict, feedback=None):
             row_data.get('confidence'),
             feedback if feedback is not None else 'Not provided'
         ]
-        ws.append(row)
-        wb.save(DATA_FILE)
+        worksheet.append_row(row)
         return row_id
     except Exception as e:
-        print(f"Excel save error: {e}")
+        print(f"Sheets save error: {e}")
         return None
 
 # ─── Preprocessing ─────────────────────────────────────────────────────────────
@@ -187,7 +197,7 @@ def predict():
                   'prediction': label,
                   'confidence': round(confidence * 100, 1) if confidence else None}
 
-        row_id = save_to_excel(record)
+        row_id = save_to_sheets(record)
         return jsonify({'prediction': label, 'confidence': confidence, 'id': row_id})
 
     except Exception as e:
@@ -200,21 +210,20 @@ def feedback():
         row_id = data.get('id')
         feedback_val = data.get('feedback')  # 'yes' or 'no'
 
-        wb = load_workbook(DATA_FILE)
-        ws = wb['Predictions']
-        feedback_col = EXCEL_HEADERS.index('Feedback') + 1
-        for row in ws.iter_rows(min_row=2):
-            if row[0].value == row_id:
-                row[feedback_col - 1].value = feedback_val
+        # Find the row in Google Sheets and update Feedback column
+        all_rows = worksheet.get_all_values()
+        feedback_col = EXCEL_HEADERS.index('Feedback') + 1  # column number
+        for i, row in enumerate(all_rows):
+            if str(row[0]) == str(row_id):
+                worksheet.update_cell(i + 1, feedback_col, feedback_val)
                 break
-        wb.save(DATA_FILE)
         return jsonify({'status': 'ok'})
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
 # ─── Startup ───────────────────────────────────────────────────────────────────
 load_models()
-init_excel()
+init_sheets()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
