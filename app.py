@@ -212,7 +212,9 @@ def feedback():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+# ─── Startup ───────────────────────────────────────────────────────────────────
+load_models()
+init_excel()
+
 if __name__ == '__main__':
-    load_models()
-    init_excel()
     app.run(debug=True, port=5000)
